@@ -33,8 +33,17 @@ console.log('----------------------------------');
 }
 console.log('----------------------------------');
 {
-  function foo(x,y,...z){
-    console.log(x,y,z);
+  function foo(...z){
+    console.log(z);
   }
   foo(1,2,3,4,5)
+}
+console.log('----------------------------------');
+{
+  function foo(x = 1,y = 2){
+    console.log(x+y);
+  }
+  foo(2,4);
+  foo(1);
+  foo(null,2);
 }
