@@ -29,12 +29,29 @@ console.log('-------------------------------');
 var tasks = {
     [Symbol.iterator](){
         var steps = this.actions.slice();
+        var idx = 0;
         return {
             [Symbol.iterator](){ return this;},
             next(){
-                
+                var current = steps[idx];
+                if(current){
+                    idx++;
+                    return {value:current,done:false};
+                }else{
+                    return {value:undefined,done:true}; //如果这里变成了false，那么在for...of中将出现死循环
+                }
+            },
+            return(v) {
+                return {value:undefined,done:true};
             }
         }
     },
-    actions:[]
+    actions:['a','b','cd']
 };
+var it = tasks[Symbol.iterator]();
+console.log(it.next());
+console.log(it.next());
+console.log(it.next());
+for(var i of tasks){
+    console.log(i);
+}
