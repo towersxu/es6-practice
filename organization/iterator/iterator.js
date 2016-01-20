@@ -38,7 +38,7 @@ var tasks = {
                     idx++;
                     return {value:current,done:false};
                 }else{
-                    return {value:undefined,done:true}; //Èç¹ûÕâÀï±ä³ÉÁËfalse£¬ÄÇÃ´ÔÚfor...ofÖĞ½«³öÏÖËÀÑ­»·
+                    return {value:undefined,done:true}; //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½falseï¿½ï¿½ï¿½ï¿½Ã´ï¿½ï¿½for...ofï¿½Ğ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ­ï¿½ï¿½
                 }
             },
             return(v) {
@@ -49,6 +49,11 @@ var tasks = {
     actions:['a','b','cd']
 };
 var it = tasks[Symbol.iterator]();
+console.log(it.length);           //undefined
+console.log(tasks.length);           //undefined
+console.log(Array.from(it));
+console.log(Array.from(tasks));   //ä½¿ç”¨arraryå°†è¿­ä»£å†…å®¹è½¬æ¢ä¸ºæ•°ç»„ã€‚//ä½¿ç”¨arraryå°†å¯éå†ï¼ˆiterableï¼‰çš„å¯¹è±¡è½¬æ¢ä¸ºæ•°ç»„ã€‚
+console.log(it.next());
 console.log(it.next());
 console.log(it.next());
 console.log(it.next());
