@@ -295,6 +295,7 @@ ES6引入rest参数（形式为“...变量名”），用于获取函数的多�
 ```
 Generator函数总是返回一个遍历器，ES6规定这个遍历器是Generator函数的实例，也继承了Generator函数的prototype对象上的方法。
 上面代码表明，Generator函数g返回的遍历器obj，是g的实例，而且继承了g.prototype。但是，如果把g当作普通的构造函数，并不会生效，因为g返回的总是遍历器对象，而不是this对象。
+另外，generator必须在使用next执行完成所有的yield之后才会调用
 
 ```javascript
 function *F(){
@@ -324,6 +325,27 @@ console.log(obj);
 ```
 //如果要把Generator函数当作正常的构造函数使用，可以采用上面的变通方法。首先，生成一个空对象，使用bind方法绑定Generator函数内部的this。这样，构造函数调用以后，这个空对象就是Generator函数的实例对象了。
 
+js默认iterators通常不会有返回值，因为会被"iterator loop"覆盖掉。但是如果是自定义的`iterator`或者`generator`，可以通过定义返回值，则可以被yield捕获到。
+```javascript
+    /*generator/p4.js*/
+    function *foo() {
+      yield 1;
+      yield 2;
+      yield 3;
+      return 4;
+    }
+    
+    function *bar() {
+      var x = yield *foo();
+      console.log( "x:", x );
+    }
+    
+    for (var v of bar()) {
+      console.log( v );
+    }
+```
+
+
 注意，yield语句是同步运行，不是异步运行（否则就失去了取代回调函数的设计目的了）。实际操作中，一般让yield语句返回Promise对象。
 
 ```javascript
@@ -352,6 +374,20 @@ function* parallelDownloads() {
 
 ```
 上面代码中，yield语句的参数是一个数组，成员就是两个任务taskA和taskB，只有等这两个任务都完成了，才会接着执行下面的语句。
+
+```javascript
+    var it = foo();
+    console.log(it.next());              // { value: 1, done: false }
+    try {
+      it.throw( "Oops!" );
+    }
+    catch (err) {
+      console.log( err ); // Exception: Oops!
+    }
+    console.log(it.next());                // { value: undefined, done: true }
+```
+退出generator
+
 
 ###部署iterator接口
 利用Generator函数，可以在任意对象上部署iterator接口。
