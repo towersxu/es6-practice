@@ -388,7 +388,90 @@ function* parallelDownloads() {
 ```
 退出generator
 
+##module
+- module是基于文件的，一个文件一个module。
+- 关键字import和export都必须在顶层作用域
+- ES6模块加载的机制，与CommonJS模块完全不同。CommonJS模块输出的是一个值的拷贝，而ES6模块输出的是值的引用。CommonJS模块输出的是被输出值的拷贝，也就是说，一旦输出一个值，模块内部的变化就影响不到这个值。请看下面这个模块文件lib.js的例子。
+```javascript
+    // module/lib.js
+    var counter = 3;
+    function incCounter() {
+      counter++;
+    }
+    module.exports = {
+      get counter() {
+        return counter;
+      },
+      incCounter: incCounter,
+    };
+    
+    //module/main.js
+    var incCounter = require('./lib').incCounter;
+    
+    incCounter();
+    var counter = require('./lib').counter;
+    console.log(counter);  // 4
+    incCounter();
+    console.log(counter); // 4
+```
 
+--ES6模块的运行机制与CommonJS不一样，它遇到模块加载命令import时，不会去执行模块，而是只生成一个动态的只读引用。等到真的需要用到时，再到模块里面去取值，换句话说，ES6的输入有点像Unix系统的”符号连接“，原始值变了，输入值也会跟着变。因此，ES6模块是动态引用，并且不会缓存值，模块里面的变量绑定其所在的模块。
+```javascript
+    // module/lib1.js
+    export let counter = 3;
+    export function incCounter() {
+      counter++;
+    }
+    
+    // module/main1.js
+    import { counter, incCounter } from './lib';
+    console.log(counter); // 3
+    incCounter();
+    console.log(counter); // 4
+```
+
+###CommonJS模块的加载原理
+
+CommonJS的一个模块，就是一个脚本文件。require命令第一次加载该脚本，就会执行整个脚本，然后在内存生成一个对象。该对象的id属性是模块名，exports属性是模块输出的各个接口，loaded属性是一个布尔值，表示该模块的脚本是否执行完毕。其他还有很多属性，这里都省略了。
+以后需要用到这个模块的时候，就会到exports属性上面取值。即使再次执行require命令，也不会再次执行该模块，而是到缓存之中取值。也就是说，CommonJS模块无论加载多少次，都只会在第一次加载时运行一次，以后再加载，就返回第一次运行的结果，除非手动清除系统缓存。
+由于CommonJS模块遇到循环加载时，返回的是当前已经执行的部分的值，而不是代码全部执行后的值，两者可能会有差异。所以，输入变量的时候，必须非常小心。
+```javascript
+    var a = require('a'); // 安全的写法
+    var foo = require('a').foo; // 危险的写法
+    
+    exports.good = function (arg) {
+      return a.foo('good', arg); // 使用的是 a.foo 的最新值
+    };
+    
+    exports.bad = function (arg) {
+      return foo('bad', arg); // 使用的是一个部分加载时的值
+    };
+```
+上面代码中，如果发生循环加载，require('a').foo的值很可能后面会被改写，改用require('a')会更保险一点。
+
+
+###ES6模块的循环加载
+ES6处理“循环加载”与CommonJS有本质的不同。ES6模块是动态引用，遇到模块加载命令import时，不会去执行模块，只是生成一个指向被加载模块的引用，需要开发者自己保证，真正取值的时候能够取到值。
+
+```javascript
+    // a.js
+    import {bar} from './b.js';
+    export function foo() {
+      bar();
+      console.log('执行完毕');
+    }
+    foo();
+    
+    // b.js
+    import {foo} from './a.js';
+    export function bar() {
+      if (Math.random() > 0.5) {
+        foo();
+      }
+    }
+```
+按照CommonJS规范，上面的代码是没法执行的。a先加载b，然后b又加载a，这时a还没有任何执行结果，所以输出结果为null，即对于b.js来说，变量foo的值等于null，后面的foo()就会报错。
+a.js之所以能够执行，原因就在于ES6加载的变量，都是动态引用其所在的模块。只要引用是存在的，代码就能执行。
 ###部署iterator接口
 利用Generator函数，可以在任意对象上部署iterator接口。
 
