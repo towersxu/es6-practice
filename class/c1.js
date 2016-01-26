@@ -70,3 +70,25 @@ console.log(p2.printName()); // "Oops"
 
 var p3 = new Point(4,2);
 console.log(p3.printName()); // "Oops"
+
+console.log("------------");
+console.log(typeof Point.prototype);
+console.log(p1.__proto__ === Point.prototype);
+
+var obj = new Object();
+console.log(obj.__proto__.__proto__)
+console.log(Object.prototype===obj.__proto__);
+
+var arr = new Array();
+console.log(arr.__proto__);
+console.log(Array.prototype);
+
+console.log(typeof arr);
+console.log(arr.constructor===Array);
+console.log(arr.__proto__.constructor===Array);
+console.log(arr.__proto__.constructor);
+console.log(typeof Array);
+console.log(Array);
+console.log(arr.__proto__.__proto__===obj.__proto__);
+
+console.log(Array.prototype.__proto__.constructor===Object)
