@@ -479,9 +479,93 @@ a.js之所以能够执行，原因就在于ES6加载的变量，都是动态引�
 Generator可以看作是数据结构，更确切地说，可以看作是一个数组结构，因为Generator函数可以返回一系列的值，这意味着它可以对任意表达式，提供类似数组的接口。
 
 
+##class
+ES6提供了更接近传统语言的写法，引入了Class（类）这个概念，作为对象的模板。通过class关键字，可以定义类。基本上，ES6的class可以看作只是一个语法糖，它的绝大部分功能，ES5都可以做到，新的class写法只是让对象原型的写法更加清晰、更像面向对象编程的语法而已。
+```javascript
+    /*class/c1.js*/
+    class Point {
+      constructor(x,y) {
+        this.x = x;
+        this.y = y;
+      }
+      toString() {
+        return '('+this.x+','+this.y+')';
+      }
+      toValue() {
+        return this.x + this.y;
+      }
+    }
+    
+    var p0 = new Point(1,2);
+    console.log(p0);
+    console.log(p0.constructor===Point.prototype.constructor);   //true
+    console.log(Point === Point.prototype.constructor)          // true
+    console.log(p0.constructor===Point);                        //true
+    console.log(p0.prototype);                        //undefined
+    console.log(Point.prototype.toString)             //[Function]
+    console.log(Point.prototype.toValue)              //[Function]
+```
+类的数据类型就是函数，类本身就指向构造函数;构造函数的prototype属性，在ES6的“类”上面继续存在。事实上，类的所有方法都定义在类的prototype属性上面。在类的实例上面调用方法，其实就是调用原型上的方法。
 
+```javascript
+    Object.assign(Point.prototype, {
+      moveUp(){
+        this.y = this.y+1;
+        return this;
+      },
+      moveDown(){
+        this.y = this.y-1;
+        return this;
+      }
+    });
+    
+    console.log(Point.prototype.moveUp)             //[Function]
+    console.log(Point.prototype.moveDown)             //[Function]
+    
+    console.log(Object.keys(Point.prototype));        //['moveUp','moveDown']
+```
+由于类的方法（除constructor以外）都定义在prototype对象上面，所以类的新方法可以添加在prototype对象上面。Object.assign方法可以很方便地一次向类添加多个方法。
+类的内部所有定义的方法，都是不可枚举的（enumerable）。使用assign添加的方法则是可枚举的。
 
+```javascript
 
+    Point.prototype.moveLeft = function(){
+      this.x = this.x - 1;
+    };
+    Point.prototype.moveRight = function(){
+      this.x = this.x + 1;
+    };
+    
+    console.log(Object.keys(Point.prototype));         //['moveUp','moveDown', 'moveLeft', 'moveRight' ]
+```
+采用ES5的写法,在原型上添加方法，该方法则是可枚举的。
+
+- `constructor`方法是类的默认方法，通过new命令生成对象实例时，自动调用该方法。一个类必须有constructor方法，如果没有显式定义，一个空的constructor方法会被默认添加。
+- constructor方法默认返回实例对象（即this），完全可以指定返回另外一个对象。结果导致实例对象不是这个类的实例
+
+```javascript
+    console.log(p0.hasOwnProperty('x')); // true
+    console.log(p0.hasOwnProperty('y')); // true
+    console.log(p0.hasOwnProperty('toString')); // false
+    console.log(p0.__proto__.hasOwnProperty('toString')); // true
+```
+- 与ES5一样，实例的属性除非显式定义在其本身（即定义在this对象上），否则都是定义在原型上（即定义在class上）。上面代码中，p0（因为定义在this变量上），所以hasOwnProperty方法返回true，而toString是原型对象的属性（因为定义在Point类上），所以hasOwnProperty方法返回false。这些都与ES5的行为保持一致。
+```javascript
+    var p1 = new Point(2,3);
+    var p2 = new Point(3,2);
+    
+    console.log(p1.__proto__ === p2.__proto__)    //true
+    
+    p1.__proto__.printName = function () { return 'Oops' };
+    
+    console.log(p1.printName()) // "Oops"
+    console.log(p2.printName()) // "Oops"
+    
+    var p3 = new Point(4,2);
+    console.log(p3.printName()) // "Oops"
+```
+
+- 与ES5一样，类的所有实例共享一个原型对象。这也意味着，可以通过实例的__proto__属性为Class添加方法。
 ##object
 
 ###object.is()
