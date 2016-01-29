@@ -567,7 +567,191 @@ ES6提供了更接近传统语言的写法，引入了Class（类）这个概念
 
 - 与ES5一样，类的所有实例共享一个原型对象。这也意味着，可以通过实例的__proto__属性为Class添加方法。
 
+- ES5是先新建子类的实例对象this，再将父类的属性添加到子类上，由于父类的内部属性无法获取，导致无法继承原生的构造函数。
+- ES6允许继承原生构造函数定义子类，因为ES6是先新建父类的实例对象this，然后再用子类的构造函数修饰this，使得父类的所有行为都可以继承。
 
+###Class的Generator方法
+如果某个方法之前加上星号（*），就表示该方法是一个Generator函数。
+```javascript
+    class Foo {
+      constructor(...args) {
+        this.args = args;
+      }
+      * [Symbol.iterator]() {
+        for (let arg of this.args) {
+          yield arg;
+        }
+      }
+    }
+    
+    for (let x of new Foo('hello', 'world')) {
+      console.log(x);
+    }
+    // hello
+    // world
+```
+
+###Class的静态方法
+类相当于实例的原型，所有在类中定义的方法，都会被实例继承。如果在一个方法前，加上static关键字，就表示该方法不会被实例继承，而是直接通过类来调用，这就称为“静态方法”。
+```javascript
+    class Foo {
+      static classMethod() {
+        return 'hello';
+      }
+    }
+    
+    Foo.classMethod() // 'hello'
+    
+    var foo = new Foo();
+    foo.classMethod()
+    // TypeError: undefined is not a function
+```
+父类的静态方法，可以被子类继承。
+
+```javascript
+    class Foo {
+      static classMethod() {
+        return 'hello';
+      }
+    }
+    
+    class Bar extends Foo {
+    }
+    
+    Bar.classMethod(); // 'hello'
+```
+
+静态方法也是可以从super对象上调用的。
+
+```javascript
+    class Foo {
+      static classMethod() {
+        return 'hello';
+      }
+    }
+    
+    class Bar extends Foo {
+      static classMethod() {
+        return super.classMethod() + ', too';
+      }
+    }
+    
+    Bar.classMethod();
+```
+
+ES6明确规定，Class内部只有静态方法，没有静态属性。
+
+```javascript
+    / 以下两种写法都无效，
+    // 但不会报错
+    class Foo {
+      // 写法一
+      prop: 2
+    
+      // 写法二
+      static prop: 2
+    }
+    
+    Foo.prop // undefined
+```
+
+###new.target属性
+new是从构造函数生成实例的命令。ES6为new命令引入了一个new.target属性，（在构造函数中）返回new命令作用于的那个构造函数。如果构造函数不是通过new命令调用的，new.target会返回undefined，因此这个属性可以用来确定构造函数是怎么调用的。
+```javascript
+    function Person(name) {
+      if (new.target !== undefined) {
+        this.name = name;
+      } else {
+        throw new Error('必须使用new生成实例');
+      }
+    }
+    
+    // 另一种写法
+    function Person(name) {
+      if (new.target === Person) {
+        this.name = name;
+      } else {
+        throw new Error('必须使用new生成实例');
+      }
+    }
+    
+    var person = new Person('张三'); // 正确
+    var notAPerson = Person.call(person, '张三');  // 报错
+```
+
+需要注意的是，子类继承父类时，new.target会返回子类。
+```javascript
+   class Rectangle {
+     constructor(length, width) {
+       console.log(new.target === Rectangle);
+       // ...
+     }
+   }
+   
+   class Square extends Rectangle {
+     constructor(length) {
+       super(length, length);
+     }
+   }
+   
+   var obj = new Square(3); // 输出 false
+```
+利用这个特点，可以写出不能独立使用、必须继承后才能使用的类。
+
+```javascript
+    class Shape {
+      constructor() {
+        if (new.target === Shape) {
+          throw new Error('本类不能实例化');
+        }
+      }
+    }
+    
+    class Rectangle extends Shape {
+      constructor(length, width) {
+        super();
+        // ...
+      }
+    }
+    
+    var x = new Shape();  // 报错
+    var y = new Rectangle(3, 4);  // 正确
+```
+
+注意，在函数外部，使用new.target会报错。
+
+###Mixin模式的实现
+
+Mixin模式指的是，将多个类的接口“混入”（mix in）另一个类。它在ES6的实现如下。
+```javascript
+    function mix(...mixins) {
+      class Mix {}
+    
+      for (let mixin of mixins) {
+        copyProperties(Mix, mixin);
+        copyProperties(Mix.prototype, mixin.prototype);
+      }
+    
+      return Mix;
+    }
+    
+    function copyProperties(target, source) {
+      for (let key of Reflect.ownKeys(source)) {
+        if ( key !== "constructor"
+          && key !== "prototype"
+          && key !== "name"
+        ) {
+          let desc = Object.getOwnPropertyDescriptor(source, key);
+          Object.defineProperty(target, key, desc);
+        }
+      }
+    }
+    
+    class DistributedEdit extends mix(Loggable, Serializable) {
+      // ...
+    }
+```
+上面代码的mix函数，可以将多个对象合成为一个类。使用的时候，只要继承这个类即可。
 
 ##object
 

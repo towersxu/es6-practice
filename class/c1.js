@@ -86,9 +86,24 @@ console.log(Array.prototype);
 console.log(typeof arr);
 console.log(arr.constructor===Array);
 console.log(arr.__proto__.constructor===Array);
-console.log(arr.__proto__.constructor);
-console.log(typeof Array);
-console.log(Array);
-console.log(arr.__proto__.__proto__===obj.__proto__);
+console.log(arr.__proto__.constructor);  //[function:Array]
+console.log(typeof Array);           //function
+console.log(Array);                 //[Function:Array]
+console.log(arr.__proto__.__proto__===obj.__proto__);  //true
 
-console.log(Array.prototype.__proto__.constructor===Object)
+console.log(Array.prototype.__proto__.constructor===Object) //true
+
+console.log(Array.__proto__.__proto__===Object.prototype);   //true
+console.log(Array.prototype.__proto__===Object.prototype);   //true
+console.log(typeof Array.prototype);   //object
+console.log(typeof Array.__proto__);   //function
+console.log(typeof Array.__proto__.__proto__);   //object
+console.log(typeof Object.prototype);   //object
+console.log(typeof Point.__proto__);     //function
+console.log(typeof Point.__proto__.__proto__)     //object
+//函数的原型是个特殊的函数，该函数的原型是对象。
+
+console.log(typeof Array.prototype.constructor);  //function
+console.log(typeof Array.prototype.constructor.__proto__);  //function
+console.log(Array.prototype.constructor===Array);  //true
+console.log(Point.prototype.constructor===Point);  //true
