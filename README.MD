@@ -753,6 +753,131 @@ Mixin模式指的是，将多个类的接口“混入”（mix in）另一个类
 ```
 上面代码的mix函数，可以将多个对象合成为一个类。使用的时候，只要继承这个类即可。
 
+##promise
+- Promise对象代表一个异步操作，有三种状态：Pending（进行中）、Resolved（已完成，又称Fulfilled）和Rejected（已失败）。
+- 如果某些事件不断地反复发生，一般来说，使用stream模式是比部署Promise更好的选择。
+- ES6规定，Promise对象是一个构造函数，用来生成Promise实例。
+```javascript
+    var promise = new Promise(function(resolve, reject) {
+      // ... some code
+
+      if (/* 异步操作成功 */){
+        resolve(value);
+      } else {
+        reject(error);
+      }
+    });
+
+    promise.then(function(value) {
+      // success
+    }, function(value) {
+      // failure
+    });
+
+```
+- 如果调用resolve函数和reject函数时带有参数，那么它们的参数会被传递给回调函数。reject函数的参数通常是Error对象的实例，表示抛出的错误；resolve函数的参数除了正常的值以外，还可能是另一个Promise实例，表示异步操作的结果有可能是一个值，也有可能是另一个异步操作.
+```javascript
+    var p1 = new Promise(function (resolve, reject) {
+      setTimeout(() => reject(new Error('fail')), 3000)
+    })
+    var p2 = new Promise(function (resolve, reject) {
+      setTimeout(() => resolve(p1), 1000)
+    })
+    p2.then(result => console.log(result))
+    p2.catch(error => console.log(error))
+    // Error: fail
+```
+p1是一个Promise，3秒之后变为rejected。p2的状态由p1决定，1秒之后，p2调用resolve方法，但是此时p1的状态还没有改变，因此p2的状态也不会变。又过了2秒，p1变为rejected，p2也跟着变为rejected。
+
+- Promise.prototype.catch
+Promise.prototype.catch方法是.then(null, rejection)的别名，用于指定发生错误时的回调函数。
+
+- Promise.all()
+Promise.all方法用于将多个Promise实例，包装成一个新的Promise实例。
+```javascript
+var p = Promise.all([p1, p2, p3]);
+```
+上面代码中，Promise.all方法接受一个数组作为参数，p1、p2、p3都是Promise对象的实例，如果不是，就会先调用下面讲到的Promise.resolve方法，将参数转为Promise实例，再进一步处理。（Promise.all方法的参数可以不是数组，但必须具有Iterator接口，且返回的每个成员都是Promise实例。）
+
+- Promise.race()
+Promise.race方法同样是将多个Promise实例，包装成一个新的Promise实例。
+```javascirpt
+    Promise.race方法同样是将多个Promise实例，包装成一个新的Promise实例。
+```
+上面代码中，只要p1、p2、p3之中有一个实例率先改变状态，p的状态就跟着改变。那个率先改变的Promise实例的返回值，就传递给p的回调函数。
+
+- Promise.resolve()
+有时需要将现有对象转为Promise对象，Promise.resolve方法就起到这个作用。
+
+- Promise.reject()
+Promise.reject(reason)方法也会返回一个新的Promise实例，该实例的状态为rejected。它的参数用法与Promise.resolve方法完全一致。
+
+- done()
+Promise对象的回调链，不管以then方法或catch方法结尾，要是最后一个方法抛出错误，都有可能无法捕捉到（因为Promise内部的错误不会冒泡到全局）。因此，我们可以提供一个done方法，总是处于回调链的尾端，保证抛出任何可能出现的错误。
+```javascript
+    Promise.prototype.done = function (onFulfilled, onRejected) {
+      this.then(onFulfilled, onRejected)
+        .catch(function (reason) {
+          // 抛出一个全局错误
+          setTimeout(() => { throw reason }, 0);
+        });
+    };
+```
+- finally()
+finally方法用于指定不管Promise对象最后状态如何，都会执行的操作。它与done方法的最大区别，它接受一个普通的回调函数作为参数，该函数不管怎样都必须执行。
+```javascript
+    Promise.prototype.finally = function (callback) {
+      let P = this.constructor;
+      return this.then(
+        value  => P.resolve(callback()).then(() => value),
+        reason => P.resolve(callback()).then(() => { throw reason })
+      );
+    };
+```
+
+-Generator函数与Promise的结合
+使用Generator函数管理流程，遇到异步操作的时候，通常返回一个Promise对象。
+
+```javascript
+    function getFoo () {
+      return new Promise(function (resolve, reject){
+        resolve('foo');
+      });
+    }
+
+    var g = function* () {
+      try {
+        var foo = yield getFoo();
+        console.log(foo);
+      } catch (e) {
+        console.log(e);
+      }
+    };
+
+    function run (generator) {
+      var it = generator();
+
+      function go(result) {
+        if (result.done) return result.value;
+
+        return result.value.then(function (value) {
+          return go(it.next(value));
+        }, function (error) {
+          return go(it.throw(error));
+        });
+      }
+
+      go(it.next());
+    }
+
+    run(g);
+```
+
+
+
+
+
+
 ##object
 
 ###object.is()
