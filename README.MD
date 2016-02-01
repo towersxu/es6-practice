@@ -873,8 +873,487 @@ finally方法用于指定不管Promise对象最后状态如何，都会执行的
     run(g);
 ```
 
+##arraybuffer
+二进制数组（ArrayBuffer对象、TypedArray视图和DataView视图）是JavaScript操作二进制数据的一个接口。这些对象早就存在，属于独立的规格（2011年2月发布），ES6将它们纳入了ECMAScript规格，并且增加了新的方法。
+这个接口的原始设计目的，与WebGL项目有关。所谓WebGL，就是指浏览器与显卡之间的通信接口，为了满足JavaScript与显卡之间大量的、实时的数据交换，它们之间的数据通信必须是二进制的，而不能是传统的文本格式。文本格式传递一个32位整数，两端的JavaScript脚本与显卡都要进行格式转化，将非常耗时。这时要是存在一种机制，可以像C语言那样，直接操作字节，将4个字节的32位整数，以二进制形式原封不动地送入显卡，脚本的性能就会大幅提升。
+二进制数组就是在这种背景下诞生的。它很像C语言的数组，允许开发者以数组下标的形式，直接操作内存，大大增强了JavaScript处理二进制数据的能力，使得开发者有可能通过JavaScript与操作系统的原生接口进行二进制通信。
+ArrayBuffer对象代表储存二进制数据的一段内存，它不能直接读写，只能通过视图（TypedArray视图和DataView视图)来读写，视图的作用是以指定格式解读二进制数据。也就是说给同一个ArrayBuffer，使用不同的视图赋值，相互之间会影响。
+```javascript
+    var buf = new ArrayBuffer(4);
+    var x1 = new Int32Array(buf);   //buf 4*8
+    x1[0]=10;
+    console.log(x1[0]);      //10
+    var x2 = new Int16Array(buf);
+    x2[0] = 11;
+    console.log(x2[0]);      //11
+    console.log(x1[0]);      //11
+```
 
 
+###ArrayBuffer对象
+代表内存之中的一段二进制数据，可以通过“视图”进行操作。“视图”部署了数组接口，这意味着，可以用数组的方法操作内存。
+
+###TypedArray视图
+共包括9种类型的视图
+- Int8Array：8位有符号整数，长度1个字节。
+- Uint8Array：8位无符号整数，长度1个字节。
+- Uint8ClampedArray：8位无符号整数，长度1个字节，溢出处理不同。
+- Int16Array：16位有符号整数，长度2个字节。
+- Uint16Array：16位无符号整数，长度2个字节。
+- Int32Array：32位有符号整数，长度4个字节。
+- Uint32Array：32位无符号整数，长度4个字节。
+- Float32Array：32位浮点数，长度4个字节。
+- Float64Array：64位浮点数，长度8个字节。
+
+它们很像普通数组，都有length属性，都能用方括号运算符（[]）获取单个元素，所有数组的方法，在它们上面都能使用。
+TypedArray数组只是一层视图，本身不储存数据，它的数据都储存在底层的ArrayBuffer对象之中，要获取底层对象必须使用buffer属性。
+普通数组的操作方法和属性，对TypedArray数组完全适用。
+
+###DataView视图
+可以自定义复合格式的视图，比如第一个字节是Uint8（无符号8位整数）、第二、三个字节是Int16（16位整数）、第四个字节开始是Float32（32位浮点数）等等，此外还可以自定义字节序。
+
+ArrayBuffer对象代表原始的二进制数据，TypedArray视图用来读写简单类型的二进制数据，DataView视图用来读写复杂类型的二进制数据。
+二进制数组并不是真正的数组，而是类似数组的对象。
+
+很多浏览器操作的API，用到了二进制数组操作二进制数据，下面是其中的几个。
+
+- File API
+- XMLHttpRequest
+- Fetch API
+- Canvas
+- WebSockets
+
+```javascript 
+    var buf = new ArrayBuffer(64);
+    console.log(buf);
+    console.log(buf.byteLength);
+    //var buf = new ArrayBuffer(32);
+    var dataView = new DataView(buf);
+    console.log(dataView.getUint8(0)); // 0
+```
+为了读写这段内容，需要为它指定视图。DataView视图的创建，需要提供ArrayBuffer对象实例作为参数。
+
+```javascript
+    var x1 = new Int32Array(buf);   //buf 4*8
+    x1[0] = 0xffffffff;
+    console.log(x1[0]); // -1
+    console.log(x1.length);    //1
+    x1[0] = 0xfffffff;
+    console.log(x1[0]); // 2^28-1
+    console.log(x1.length);    //1
+    var x2 = new Float32Array(buf);
+    x2[0]  = 0xffffffff;
+    console.log(x2[0]); // 2^32
+    console.log(x2.length);      //1
+    var x3 = new Uint32Array(buf);
+    x3[0]  = 0xffffffff;
+    console.log(x3.length);     //1
+    console.log(x3[0]); // 2^32-1
+    var x4 = new Int8Array(buf);
+    console.log(x4.length);   //4    32/8
+```
+可以看出，对同一段内存赋相同的值，不同的视图取出来的值不一样。
+
+###ArrayBuffer.prototype.byteLength
+ArrayBuffer实例的byteLength属性，返回所分配的内存区域的字节长度。
+如果要分配的内存区域很大，有可能分配失败（因为没有那么多的连续空余内存），所以有必要检查是否分配成功。
+```javascript
+    if (buffer.byteLength === n) {
+      // 成功
+    } else {
+      // 失败
+    }
+```
+
+###ArrayBuffer.prototype.slice()
+```javascript
+    var buffer = new ArrayBuffer(8);
+    var newBuffer = buffer.slice(0, 3);
+```
+上面代码拷贝buffer对象的前3个字节（从0开始，到第3个字节前面结束），生成一个新的ArrayBuffer对象。slice方法其实包含两步，第一步是先分配一段新内存，第二步是将原来那个ArrayBuffer对象拷贝过去。
+
+###ArrayBuffer.isView()
+ArrayBuffer有一个静态方法isView，返回一个布尔值，表示参数是否为ArrayBuffer的视图实例。这个方法大致相当于判断参数，是否为TypedArray实例或DataView实例。
+```javascript
+    var buffer = new ArrayBuffer(8);
+    ArrayBuffer.isView(buffer) // false
+    
+    var v = new Int32Array(buffer);
+    ArrayBuffer.isView(v) // true
+```
+
+###字节序
+字节序指的是数值在内存中的表示方式。
+```javascript
+    var buffer = new ArrayBuffer(16);
+    var int32View = new Int32Array(buffer);
+    
+    for (var i = 0; i < int32View.length; i++) {
+      int32View[i] = i * 2;
+    }
+```
+上面代码生成一个16字节的ArrayBuffer对象，然后在它的基础上，建立了一个32位整数的视图。由于每个32位整数占据4个字节，所以一共可以写入4个整数，依次为0，2，4，6。
+如果在这段数据上接着建立一个16位整数的视图，则可以读出完全不一样的结果。
+```javascript
+    var int16View = new Int16Array(buffer);
+    
+    for (var i = 0; i < int16View.length; i++) {
+      console.log("Entry " + i + ": " + int16View[i]);
+    }
+    // Entry 0: 0
+    // Entry 1: 0
+    // Entry 2: 2
+    // Entry 3: 0
+    // Entry 4: 4
+    // Entry 5: 0
+    // Entry 6: 6
+    // Entry 7: 0
+
+```
+可以看到16位字节返回的是8个整数：0，0，2，0，4，0，6，0
+但是如果操是大端字节序，那么上面16为字节返回的8个整数则为：0，0，0，2，0，4，0，6
+目前，所有个人电脑几乎都是小端字节序，所以TypedArray数组内部也采用小端字节序读写数据，或者更准确的说，按照本机操作系统设定的字节序读写数据。
+这并不意味大端字节序不重要，事实上，很多网络设备和特定的操作系统采用的是大端字节序。这就带来一个严重的问题：如果一段数据是大端字节序，TypedArray数组将无法正确解析，因为它只能处理小端字节序！为了解决这个问题，JavaScript引入DataView对象，可以设定字节序。
+
+```javascript
+const BIG_ENDIAN = Symbol('BIG_ENDIAN');
+const LITTLE_ENDIAN = Symbol('LITTLE_ENDIAN');
+
+function getPlatformEndianness() {
+  let arr32 = Uint32Array.of(0x12345678);
+  let arr8 = new Uint8Array(arr32.buffer);
+  switch ((arr8[0]*0x1000000) + (arr8[1]*0x10000) + (arr8[2]*0x100) + (arr8[3])) {
+    case 0x12345678:
+      return BIG_ENDIAN;
+    case 0x78563412:
+      return LITTLE_ENDIAN;
+    default:
+      throw new Error('Unknown endianness');
+  }
+}
+```
+
+###BYTES_PER_ELEMENT
+每一种视图的构造函数，都有一个BYTES_PER_ELEMENT属性，表示这种数据类型占据的字节数。
+```javascript
+Int8Array.BYTES_PER_ELEMENT // 1
+Uint8Array.BYTES_PER_ELEMENT // 1
+Int16Array.BYTES_PER_ELEMENT // 2
+Uint16Array.BYTES_PER_ELEMENT // 2
+Int32Array.BYTES_PER_ELEMENT // 4
+Uint32Array.BYTES_PER_ELEMENT // 4
+Float32Array.BYTES_PER_ELEMENT // 4
+Float64Array.BYTES_PER_ELEMENT // 8
+```
+
+###ArrayBuffer与字符串的互相转换
+ArrayBuffer转为字符串，或者字符串转为ArrayBuffer，有一个前提，即字符串的编码方法是确定的。假定字符串采用UTF-16编码（JavaScript的内部编码方式），可以自己编写转换函数。
+```javascript
+    // ArrayBuffer转为字符串，参数为ArrayBuffer对象
+    function ab2str(buf) {
+      return String.fromCharCode.apply(null, new Uint16Array(buf));
+    }
+    
+    // 字符串转为ArrayBuffer对象，参数为字符串
+    function str2ab(str) {
+      var buf = new ArrayBuffer(str.length * 2); // 每个字符占用2个字节
+      var bufView = new Uint16Array(buf);
+      for (var i = 0, strLen = str.length; i < strLen; i++) {
+        bufView[i] = str.charCodeAt(i);
+      }
+      return buf;
+    }
+```
+
+###溢出
+TypedArray数组对于溢出，采用的处理方法是求余值。正向溢出（overflow）的含义是输入值大于当前数据类型的最大值，最后得到的值就等于当前数据类型的最小值加上余值，再减去1；负向溢出（underflow）等于当前数据类型的最大值减去余值，再加上1。
+```javascript
+var uint8 = new Uint8Array(1);
+
+uint8[0] = 0xff+0x01;
+console.log(uint8[0]); // 0
+
+uint8[0] = 0x00-0x01;
+console.log(uint8[0]); // 255
+```
+8位无符号整数的数值范围是0到255，超出这个范围，就是溢出。256相当于正向溢出1，即余值为1，最后的值等于0（0 + 1 -1）；-1相当于负向溢出1，余值也为1，最后的值等于255（255 - 1 + 1）。
+Uint8ClampedArray视图的溢出，与上面的规则有所不同。负向溢出都等于0，正向溢出都等于255。
+```javascript
+var uint8c = new Uint8ClampedArray(1);
+
+uint8c[0] = 256;
+console.log(uint8c[0]); // 255
+
+uint8c[0] = -1;
+console.log(uint8c[0]); // 0
+```
+
+###TypedArray.prototype.buffer
+TypedArray实例的buffer属性，返回整段内存区域对应的ArrayBuffer对象。该属性为只读属性。
+```javascript
+    var a = new Float32Array(64);
+    var b = new Uint8Array(a.buffer);
+```
+
+###TypedArray.prototype.byteLength，TypedArray.prototype.byteOffset
+byteLength属性返回TypedArray数组占据的内存长度，单位为字节。byteOffset属性返回TypedArray数组从底层ArrayBuffer对象的哪个字节开始。这两个属性都是只读属性。
+```javascript
+    var b = new ArrayBuffer(8);
+    
+    var v1 = new Int32Array(b);
+    var v2 = new Uint8Array(b, 2);
+    var v3 = new Int16Array(b, 2, 2);
+    
+    v1.byteLength // 8
+    v2.byteLength // 6
+    v3.byteLength // 4
+    
+    v1.byteOffset // 0
+    v2.byteOffset // 2
+    v3.byteOffset // 2
+```
+
+###TypedArray.prototype.length
+length属性表示TypedArray数组含有多少个成员。注意将byteLength属性和length属性区分，前者是字节长度，后者是成员长度。
+```javascript
+    var a = new Int16Array(8);
+    
+    a.length // 8
+    a.byteLength // 16
+```
+
+###TypedArray.prototype.set()
+TypedArray数组的set方法用于复制数组（普通数组或TypedArray数组），也就是将一段内容完全复制到另一段内存。
+```javascript
+    var a = new Uint8Array(8);
+    var b = new Uint8Array(8);
+    
+    b.set(a);
+```
+上面代码复制a数组的内容到b数组，它是整段内存的复制，比一个个拷贝成员的那种复制快得多。
+set方法还可以接受第二个参数，表示从b对象的哪一个成员开始复制a对象。
+```javascript
+    var a = new Uint16Array(8);
+    var b = new Uint16Array(10);
+    
+    b.set(a, 2)
+```
+上面代码的b数组比a数组多两个成员，所以从b[2]开始复制。
+
+###TypedArray.prototype.subarray()
+subarray方法是对于TypedArray数组的一部分，再建立一个新的视图。
+```javascript
+    var a = new Uint16Array(8);
+    var b = a.subarray(2,3);
+    
+    a.byteLength // 16
+    b.byteLength // 2
+```
+
+###TypedArray.prototype.slice()
+TypeArray实例的slice方法，可以返回一个指定位置的新的TypedArray实例。
+```javascript
+    let ui8 = Uint8Array.of(0, 1, 2);
+    ui8.slice(-1)
+    // Uint8Array [ 2 ]
+```
+###TypedArray.of()
+TypedArray数组的所有构造函数，都有一个静态方法of，用于将参数转为一个TypedArray实例。
+下面三种方法都会生成同样一个TypedArray数组。
+```javascript
+    // 方法一
+    let tarr = new Uint8Array([1,2,3]);
+    
+    // 方法二
+    let tarr = Uint8Array.of(1,2,3);
+    
+    // 方法三
+    let tarr = new Uint8Array(3);
+    tarr[0] = 0;
+    tarr[1] = 1;
+    tarr[2] = 2;
+```
+
+###TypedArray.from()
+静态方法from接受一个可遍历的数据结构（比如数组）作为参数，返回一个基于这个结构的TypedArray实例。
+这个方法还可以将一种TypedArray实例，转为另一种。
+```javascript
+    var ui16 = Uint16Array.from(Uint8Array.of(0, 1, 2));
+    ui16 instanceof Uint16Array // true
+```
+from方法还可以接受一个函数，作为第二个参数，用来对每个元素进行遍历，功能类似map方法。
+```javascript
+    Int8Array.of(127, 126, 125).map(x => 2 * x)
+    // Int8Array [ -2, -4, -6 ]
+    
+    Int16Array.from(Int8Array.of(127, 126, 125), x => 2 * x)
+    // Int16Array [ 254, 252, 250 ]
+```
+上面的例子中，from方法没有发生溢出，这说明遍历是针对新生成的16位整数数组，而不是针对原来的8位整数数组。也就是说，from会将第一个参数指定的TypedArray数组，拷贝到另一段内存之中（占用内存从3字节变为6字节），然后再进行处理。
+
+###复合视图
+由于视图的构造函数可以指定起始位置和长度，所以在同一段内存之中，可以依次存放不同类型的数据，这叫做“复合视图”。
+```javascript
+    var buffer = new ArrayBuffer(24);
+    
+    var idView = new Uint32Array(buffer, 0, 1);
+    var usernameView = new Uint8Array(buffer, 4, 16);
+    var amountDueView = new Float32Array(buffer, 20, 1);
+```
+上面代码将一个24字节长度的ArrayBuffer对象，分成三个部分：
+- 字节0到字节3：1个32位无符号整数
+- 字节4到字节19：16个8位整数
+- 字节20到字节23：1个32位浮点数
+
+这种数据结构可以用如下的C语言描述：
+```c
+    struct someStruct {
+      unsigned long id;
+      char username[16];
+      float amountDue;
+    };
+```
+
+###DataView视图
+如果一段数据包括多种类型（比如服务器传来的HTTP数据），这时除了建立ArrayBuffer对象的复合视图以外，还可以通过DataView视图进行操作。
+DataView视图提供更多操作选项，而且支持设定字节序。本来，在设计目的上，ArrayBuffer对象的各种TypedArray视图，是用来向网卡、声卡之类的本机设备传送数据，所以使用本机的字节序就可以了；而DataView视图的设计目的，是用来处理网络设备传来的数据，所以大端字节序或小端字节序是可以自行设定的。
+DataView视图本身也是构造函数，接受一个ArrayBuffer对象作为参数，生成视图。
+```javascript
+    DataView(ArrayBuffer buffer [, 字节起始位置 [, 长度]]);
+    
+    var buffer = new ArrayBuffer(24);
+    var dv = new DataView(buffer);
+    var v1 = dv.getUint8(0);
+   
+    // 小端字节序
+    var v1 = dv.getUint16(1, true);
+    
+    // 大端字节序
+    var v2 = dv.getUint16(3, false);
+    
+    // 大端字节序
+    var v3 = dv.getUint16(3);
+    
+    // 在第1个字节，以大端字节序写入值为25的32位整数
+    dv.setInt32(0, 25, false);
+    
+    // 在第5个字节，以大端字节序写入值为25的32位整数
+    dv.setInt32(4, 25);
+    
+    // 在第9个字节，以小端字节序写入值为2.5的32位浮点数
+    dv.setFloat32(8, 2.5, true);
+```
+DataView实例提供8个方法读取内存。
+- getInt8：读取1个字节，返回一个8位整数。
+- getUint8：读取1个字节，返回一个无符号的8位整数。
+- getInt16：读取2个字节，返回一个16位整数。
+- getUint16：读取2个字节，返回一个无符号的16位整数。
+- getInt32：读取4个字节，返回一个32位整数。
+- getUint32：读取4个字节，返回一个无符号的32位整数。
+- getFloat32：读取4个字节，返回一个32位浮点数。
+- getFloat64：读取8个字节，返回一个64位浮点数。
+这一系列get方法的参数都是一个字节序号（不能是负数，否则会报错），表示从哪个字节开始读取。
+如果一次读取两个或两个以上字节，就必须明确数据的存储方式，到底是小端字节序还是大端字节序。默认情况下，DataView的get方法使用大端字节序解读数据，如果需要使用小端字节序解读，必须在get方法的第二个参数指定true。
+
+DataView视图提供8个方法写入内存。同get
+这一系列set方法，接受两个参数，第一个参数是字节序号，表示从哪个字节开始写入，第二个参数为写入的数据。对于那些写入两个或两个以上字节的方法，需要指定第三个参数，false或者undefined表示使用大端字节序写入，true表示使用小端字节序写入。
+
+如果不确定正在使用的计算机的字节序，可以采用下面的判断方式。
+```javascript
+var littleEndian = (function() {
+  var buffer = new ArrayBuffer(2);
+  new DataView(buffer).setInt16(0, 256, true);
+  return new Int16Array(buffer)[0] === 256;
+})();
+
+//如果返回true，就是小端字节序；如果返回false，就是大端字节序。
+```
+##二进制数组的应用
+###AJAX
+传统上，服务器通过AJAX操作只能返回文本数据，即responseType属性默认为text。XMLHttpRequest第二版XHR2允许服务器返回二进制数据，这时分成两种情况。如果明确知道返回的二进制数据类型，可以把返回类型（responseType）设为arraybuffer；如果不知道，就设为blob。
+```javascript
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', someUrl);
+    xhr.responseType = 'arraybuffer';
+    
+    xhr.onload = function () {
+      let arrayBuffer = xhr.response;
+      // ···
+    };
+    
+    xhr.send();
+```
+如果知道传回来的是32位整数，可以像下面这样处理。
+```javascript
+    xhr.onreadystatechange = function () {
+      if (req.readyState === 4 ) {
+        var arrayResponse = xhr.response;
+        var dataView = new DataView(arrayResponse);
+        var ints = new Uint32Array(dataView.byteLength / 4);
+    
+        xhrDiv.style.backgroundColor = "#00FF00";
+        xhrDiv.innerText = "Array is " + ints.length + "uints long";
+      }
+    }
+```
+
+###Canvas
+网页Canvas元素输出的二进制像素数据，就是TypedArray数组。
+```javascript
+    var canvas = document.getElementById('myCanvas');
+    var ctx = canvas.getContext('2d');
+    
+    var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var uint8ClampedArray = imageData.data;
+```
+需要注意的是，上面代码的typedArray虽然是一个TypedArray数组，但是它的视图类型是一种针对Canvas元素的专有类型Uint8ClampedArray。这个视图类型的特点，就是专门针对颜色，把每个字节解读为无符号的8位整数，即只能取值0～255，而且发生运算的时候自动过滤高位溢出。这为图像处理带来了巨大的方便.
+Uint8ClampedArray类型确保将小于0的值设为0，将大于255的值设为255。注意，IE 10不支持该类型。
+
+###websocket
+WebSocket可以通过ArrayBuffer，发送或接收二进制数据。
+```javascript
+    var socket = new WebSocket('ws://127.0.0.1:8081');
+    socket.binaryType = 'arraybuffer';
+    
+    // Wait until socket is open
+    socket.addEventListener('open', function (event) {
+      // Send binary data
+      var typedArray = new Uint8Array(4);
+      socket.send(typedArray.buffer);
+    });
+    
+    // Receive binary data
+    socket.addEventListener('message', function (event) {
+      var arrayBuffer = event.data;
+      // ···
+    });
+```
+
+###Fetch API
+Fetch API取回的数据，就是ArrayBuffer对象。
+```javascript
+    fetch(url)
+    .then(function(request){
+      return request.arrayBuffer()
+    })
+    .then(function(arrayBuffer){
+      // ...
+    });
+
+```
+
+###File API
+如果知道一个文件的二进制数据类型，也可以将这个文件读取为ArrayBuffer对象。
+```javascript
+    var fileInput = document.getElementById('fileInput');
+    var file = fileInput.files[0];
+    var reader = new FileReader();
+    reader.readAsArrayBuffer(file);
+    reader.onload = function () {
+      var arrayBuffer = reader.result;
+      // ···
+    };
+```
 
 
 
