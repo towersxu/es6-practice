@@ -1355,6 +1355,320 @@ Fetch API取回的数据，就是ArrayBuffer对象。
     };
 ```
 
+##set
+- ES6提供了新的数据结构Set。它类似于数组，但是成员的值都是唯一的，没有重复的值。
+- Set函数可以接受一个数组（或类似数组的对象）作为参数，用来初始化。
+```javascript
+    var items = new Set([1, 2, 3, 4, 5, 5, 5, 5]);
+    items.size // 5
+```
+- 向Set加入值的时候，不会发生类型转换，所以5和"5"是两个不同的值。Set内部判断两个值是否不同，使用的算法叫做“Same-value equality”，它类似于精确相等运算符（===），主要的区别是NaN等于自身，而精确相等运算符认为NaN不等于自身。
+- 两个对象总是不相等的。
+```javascript
+    let set = new Set();
+    set.add({})
+    set.size // 1
+    set.add({})
+    set.size // 2
+```
+Array.from方法可以将Set结构转为数组。
+```javascript
+    var items = new Set([1, 2, 3, 4, 5]);
+    var array = Array.from(items);
+```
+这就提供了一种去除数组的重复元素的方法。
+```javascript
+    function dedupe(array) {
+      return Array.from(new Set(array));
+    }
+    
+    dedupe([1,1,2,3]) // [1, 2, 3]
+    
+    let unique = [...new Set(arr)];  //快捷去重
+```
+###遍历
+Set结构的实例默认可遍历，它的默认遍历器生成函数就是它的values方法。
+```javascript
+    Set.prototype[Symbol.iterator] === Set.prototype.values
+```
+这意味着，可以省略values方法，直接用for...of循环遍历Set。
+由于扩展运算符（...）内部使用for...of循环，所以也可以用于Set结构。
+```javascript
+    let set = new Set(['red', 'green', 'blue']);
+    
+    for (let x of set) {
+      console.log(x);
+    }
+    // red
+    // green
+    // blue
+    let arr = [...set];// ['red', 'green', 'blue']
+```
+数组的map和filter方法也可以用于Set了。
+因此使用Set，可以很容易地实现并集（Union）、交集（Intersect）和差集（Difference）。
+```javascript
+    let a = new Set([1, 2, 3]);
+    let b = new Set([4, 3, 2]);
+    
+    // 并集
+    let union = new Set([...a, ...b]);
+    // [1, 2, 3, 4]
+    
+    // 交集
+    let intersect = new Set([...a].filter(x => b.has(x)));
+    // [2, 3]
+    
+    // 差集
+    let difference = new Set([...a].filter(x => !b.has(x)));
+    // [1]
+```
+
+###WeakSet
+WeakSet结构与Set类似，也是不重复的值的集合。
+- WeakSet的成员只能是对象，而不能是其他类型的值。
+- WeakSet中的对象都是弱引用，即垃圾回收机制不考虑WeakSet对该对象的引用，也就是说，如果其他对象都不再引用该对象，那么垃圾回收机制会自动回收该对象所占用的内存，不考虑该对象还存在于WeakSet之中。这个特点意味着，无法引用WeakSet的成员，因此WeakSet是不可遍历的。
+
+WeakSet结构有以下三个方法。
+- WeakSet.prototype.add(value)：向WeakSet实例添加一个新成员。
+- WeakSet.prototype.delete(value)：清除WeakSet实例的指定成员。
+- WeakSet.prototype.has(value)：返回一个布尔值，表示某个值是否在WeakSet实例之中。
+
+WeakSet不能遍历，是因为成员都是弱引用，随时可能消失，遍历机制无法保证成员的存在，很可能刚刚遍历结束，成员就取不到了。WeakSet的一个用处，是储存DOM节点，而不用担心这些节点从文档移除时，会引发内存泄漏。
+
+```javascript
+    const foos = new WeakSet()
+    class Foo {
+      constructor() {
+        foos.add(this)
+      }
+      method () {
+        if (!foos.has(this)) {
+          throw new TypeError('Foo.prototype.method 只能在Foo的实例上调用！')
+        }
+      }
+    }
+```
+上面代码保证了Foo的实例方法，只能在Foo的实例上调用。这里使用WeakSet的好处是，foos对实例的引用，不会被计入内存回收机制，所以删除实例的时候，不用考虑foos，也不会出现内存泄漏。
+
+##Map
+JavaScript的对象（Object），本质上是键值对的集合（Hash结构），但是只能用字符串当作键。这给它的使用带来了很大的限制。
+为了解决这个问题，ES6提供了Map数据结构。它类似于对象，也是键值对的集合，但是“键”的范围不限于字符串，各种类型的值（包括对象）都可以当作键。也就是说，Object结构提供了“字符串—值”的对应，Map结构提供了“值—值”的对应，是一种更完善的Hash结构实现。如果你需要“键值对”的数据结构，Map比Object更合适。
+
+只有对同一个对象的引用，Map结构才将其视为同一个键。这一点要非常小心。
+```javascript
+   var map = new Map();
+   
+   var k1 = ['a'];
+   var k2 = ['a'];
+   
+   map
+   .set(k1, 111)
+   .set(k2, 222);
+   
+   map.get(k1) // 111
+   map.get(k2) // 222
+```
+同样的值的两个实例，在Map结构中被视为两个键。
+
+WeakMap结构与Map结构基本类似，唯一的区别是它只接受对象作为键名（null除外），不接受其他类型的值作为键名，而且键名所指向的对象，不计入垃圾回收机制。
+
+
+##thunk
+Thunk函数现在可以用于Generator函数的自动流程管理。
+```javascript
+    var fs = require('fs');
+    var thunkify = require('thunkify');
+    var readFile = thunkify(fs.readFile);
+    
+    var gen = function* (){
+      var r1 = yield readFile('package.json');
+      console.log(r1.toString());
+      var r2 = yield readFile('.gitignore');
+      console.log(r2.toString());
+    };
+    
+    var g = gen();
+    
+    var r1 = g.next();
+    r1.value(function(err, data){
+      if (err) throw err;
+      var r2 = g.next(data);
+      r2.value(function(err, data){
+        if (err) throw err;
+        g.next(data);
+      });
+    });
+```
+
+##co模块的原理
+Generator就是一个异步操作的容器。它的自动执行需要一种机制，当异步操作有了结果，能够自动交回执行权。
+
+两种方法可以做到这一点。
+（1）回调函数。将异步操作包装成Thunk函数，在回调函数里面交回执行权。
+（2）Promise 对象。将异步操作包装成Promise对象，用then方法交回执行权。
+co模块其实就是将两种自动执行器（Thunk函数和Promise对象），包装成一个模块。使用co的前提条件是，Generator函数的yield命令后面，只能是Thunk函数或Promise对象。
+
+##基于Promise对象的自动执行
+```javascript
+    var fs = require('fs');
+    
+    var readFile = function (fileName){
+      return new Promise(function (resolve, reject){
+        fs.readFile(fileName, function(error, data){
+          if (error) reject(error);
+          resolve(data);
+        });
+      });
+    };
+    
+    var gen = function* (){
+      var f1 = yield readFile('/etc/fstab');
+      var f2 = yield readFile('/etc/shells');
+      console.log(f1.toString());
+      console.log(f2.toString());
+    };
+    function run(gen){
+      var g = gen();
+    
+      function next(data){
+        var result = g.next(data);
+        if (result.done) return result.value;
+        result.value.then(function(data){
+          next(data);
+        });
+      }
+    
+      next();
+    }
+    
+    run(gen);
+```
+
+##装饰器
+修饰器（Decorator）是一个表达式，用来修改类的行为。这是ES7的一个提案，目前Babel转码器已经支持。
+修饰器对类的行为的改变，是代码编译时发生的，而不是在运行时。这意味着，修饰器能在编译阶段运行代码。
+```javascript
+    function testable(target) {
+      target.isTestable = true;
+    }
+    
+    @testable
+    class MyTestableClass {}
+    console.log(MyTestableClass.isTestable) // true
+```
+
+##解构
+ES6允许按照一定模式，从数组和对象中提取值，对变量进行赋值，这被称为解构（Destructuring）。
+```javascript
+let [a, [b], d] = [1, [2, 3], 4];
+a // 1
+b // 2
+d // 4
+```
+解构赋值允许指定默认值。
+```javascript
+    var [foo = true] = [];
+    foo // true
+    
+    [x, y = 'b'] = ['a'] // x='a', y='b'
+    [x, y = 'b'] = ['a', undefined] // x='a', y='b'
+```
+注意，ES6内部使用严格相等运算符（===），判断一个位置是否有值。所以，如果一个数组成员不严格等于undefined，默认值是不会生效的。
+```javascript
+    var [x = 1] = [undefined];
+    x // 1
+    var [x = 1] = [null];
+    x // null
+```
+如果默认值是一个表达式，那么这个表达式是惰性求值的，即只有在用到的时候，才会求值。
+```javascript
+    function f(){
+      console.log('aaa');
+    }
+    
+    let [x = f()] = [1];
+```
+ES6的规则是，只要有可能导致解构的歧义，就不得使用圆括号。
+- （1）交换变量的值
+```javascript
+    [x, y] = [y, x];
+```
+- （2）从函数返回多个值
+```javascript
+    // 返回一个数组
+    
+    function example() {
+      return [1, 2, 3];
+    }
+    var [a, b, c] = example();
+    
+    // 返回一个对象
+    
+    function example() {
+      return {
+        foo: 1,
+        bar: 2
+      };
+    }
+    var { foo, bar } = example();
+```
+- （3）函数参数的定义
+```javascript
+    // 参数是一组有次序的值
+    function f([x, y, z]) { ... }
+    f([1, 2, 3])
+    
+    // 参数是一组无次序的值
+    function f({x, y, z}) { ... }
+    f({z: 3, y: 2, x: 1})
+```
+- （4）提取JSON数据
+```javascript
+    var jsonData = {
+      id: 42,
+      status: "OK",
+      data: [867, 5309]
+    }
+    
+    let { id, status, data: number } = jsonData;
+    
+    console.log(id, status, number)
+    // 42, OK, [867, 5309]
+```
+
+- （5）函数参数的默认值
+```javascript
+    jQuery.ajax = function (url, {
+      async = true,
+      beforeSend = function () {},
+      cache = true,
+      complete = function () {},
+      crossDomain = false,
+      global = true,
+      // ... more config
+    }) {
+      // ... do stuff
+    };
+```
+指定参数的默认值，就避免了在函数体内部再写var foo = config.foo || 'default foo';这样的语句。
+
+- （6）遍历Map结构
+```javascript
+    var map = new Map();
+    map.set('first', 'hello');
+    map.set('second', 'world');
+    
+    for (let [key, value] of map) {
+      console.log(key + " is " + value);
+    }
+    // first is hello
+    // second is world
+```
+
+- （7）输入模块的指定方法
+```javascript
+    const { SourceMapConsumer, SourceNode } = require("source-map");
+```
 
 
 ##object
