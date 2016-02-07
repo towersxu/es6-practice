@@ -1745,9 +1745,6 @@ Math.log1p(x)方法返回1 + x的自然对数，即Math.log(1 + x)。如果x小�
 - Math.acosh(x) 返回x的反双曲余弦（inverse hyperbolic cosine）
 - Math.atanh(x) 返回x的反双曲正切（inverse hyperbolic tangent）
 
-
-
-
 ##object
 
 ###object.is()
@@ -1765,3 +1762,178 @@ ES6提出“Same-value equality”（同值相等）算法，用来解决这个�
 一般清空下还是应该用`===`进行值的比较，只有在遇到-0或者NaN等值比较是才使用Object.is()
 
 ###Object.getOwnPropertySymbols()
+
+
+###property
+ES6允许直接写入变量和函数，作为对象的属性和方法。这样的书写更加简洁。
+```javascript
+    var foo = "bar";
+    var bar = {
+      foo,
+      zar:'zar'
+    };
+    console.log(bar);
+
+    var obj = {
+      * m(){
+        yield 'hello world';
+      }
+    }
+```
+
+ES6允许字面量定义对象时，用方法二（表达式）作为对象的属性名，即把表达式放在方括号内。
+```javascript
+var lastWord = 'last word';
+
+var a = {
+  'first word': 'hello',
+  [lastWord]: 'world'
+};
+
+a['first word'] // "hello"
+a[lastWord] // "world"
+a['last word'] // "world"
+
+var lastWord = 'last word';
+
+var a = {
+  'first word': 'hello',
+  [lastWord]: 'world'
+};
+
+a['first word'] // "hello"
+a[lastWord] // "world"
+a['last word'] // "world"
+```
+
+函数的name属性，返回函数名。对象方法也是函数，因此也有name属性。
+有两种特殊情况：bind方法创造的函数，name属性返回“bound”加上原函数的名字；Function构造函数创造的函数，name属性返回“anonymous”。
+
+如果对象的方法是一个Symbol值，那么name属性返回的是这个Symbol值的描述。
+```javascript
+    const key1 = Symbol('description');
+    const key2 = Symbol();
+    let obj = {
+      [key1]() {},
+      [key2]() {},
+    };
+    obj[key1].name // "[description]"
+    obj[key2].name // ""
+```
+
+###Object.assign()
+Object.assign方法用来将源对象（source）的所有可枚举属性，复制到目标对象（target）。它至少需要两个对象作为参数，第一个参数是目标对象，后面的参数都是源对象。只要有一个参数不是对象，就会抛出TypeError错误。
+注意，如果目标对象与源对象有同名属性，或多个源对象有同名属性，则后面的属性会覆盖前面的属性。
+```javascript
+    var target = { a: 1, b: 1 };
+
+    var source1 = { b: 2, c: 2 };
+    var source2 = { c: 3 };
+
+    Object.assign(target, source1, source2);
+    target // {a:1, b:2, c:3}
+```
+Object.assign只拷贝自身属性，不可枚举的属性（enumerable为false）和继承的属性不会被拷贝。
+```javascript
+    Object.assign({b: 'c'},
+      Object.defineProperty({}, 'invisible', {
+        enumerable: false,
+        value: 'hello'
+      })
+    )
+    // { b: 'c' }
+```
+属性名为Symbol值的属性，也会被Object.assign拷贝。
+
+对于嵌套的对象，Object.assign的处理方法是替换，而不是添加。
+```javascript
+var target = { a: { b: 'c', d: 'e' } }
+var source = { a: { b: 'hello' } }
+Object.assign(target, source)
+// { a: { b: 'hello' } }
+```
+
+- 为对象添加属性
+```javascript
+ class Point {
+   constructor(x, y) {
+     Object.assign(this, {x, y});
+   }
+ }
+```
+- 为对象添加方法
+```javascript
+Object.assign(SomeClass.prototype, {
+  someMethod(arg1, arg2) {
+    ···
+  },
+  anotherMethod() {
+    ···
+  }
+});
+
+```
+
+- 克隆对象
+```javascript
+    function clone(origin) {
+      return Object.assign({}, origin);
+    }
+```
+不过，采用这种方法克隆，只能克隆原始对象自身的值，不能克隆它继承的值。如果想要保持继承链，可以采用下面的代码。
+```javascript
+    function clone(origin) {
+      let originProto = Object.getPrototypeOf(origin);
+      return Object.assign(Object.create(originProto), origin);
+    }
+```
+
+属性的可枚举性
+对象的每个属性都有一个描述对象（Descriptor），用来控制该属性的行为。Object.getOwnPropertyDescriptor方法可以获取该属性的描述对象。
+
+```javascript
+let obj = { foo: 123 };
+ Object.getOwnPropertyDescriptor(obj, 'foo')
+ //   { value: 123,
+ //     writable: true,
+ //     enumerable: true,
+ //     configurable: true }
+```
+ES5有三个操作会忽略enumerable为false的属性。
+
+for...in 循环：只遍历对象自身的和继承的可枚举的属性
+Object.keys()：返回对象自身的所有可枚举的属性的键名
+JSON.stringify()：只串行化对象自身的可枚举的属性
+
+ES6新增了两个操作，会忽略enumerable为false的属性。
+
+Object.assign()：只拷贝对象自身的可枚举的属性
+Reflect.enumerate()：返回所有for...in循环会遍历的属性
+
+ES6规定，所有Class的原型的方法都是不可枚举的。
+
+Object.getOwnPropertyNames返回一个数组，包含对象自身的所有属性（不含Symbol属性，但是包括不可枚举属性）。
+
+Object.getOwnPropertySymbols返回一个数组，包含对象自身的所有Symbol属性。
+
+__proto__属性（前后各两个下划线），用来读取或设置当前对象的prototype对象。目前，所有浏览器（包括IE11）都部署了这个属性。
+该属性没有写入ES6的正文，而是写入了附录，原因是__proto__前后的双下划线，说明它本质上是一个内部属性，而不是一个正式的对外的API，只是由于浏览器广泛支持，才被加入了ES6。标准明确规定，只有浏览器必须部署这个属性，其他运行环境不一定需要部署，而且新的代码最好认为这个属性是不存在的。因此，无论从语义的角度，还是从兼容性的角度，都不要使用这个属性，而是使用下面的Object.setPrototypeOf()（写操作）、Object.getPrototypeOf()（读操作）、Object.create()（生成操作）代替。
+
+在实现上，__proto__调用的是Object.prototype.__proto__，具体实现如下。
+
+Object.setPrototypeOf方法的作用与__proto__相同，用来设置一个对象的prototype对象。它是ES6正式推荐的设置原型对象的方法。
+```javascript
+let proto = {};
+let obj = { x: 10 };
+Object.setPrototypeOf(obj, proto);
+
+proto.y = 20;
+proto.z = 40;
+
+obj.x // 10
+obj.y // 20
+obj.z // 40
+```
+该方法与setPrototypeOf方法配套，用于读取一个对象的prototype对象。
+ES5引入了Object.keys方法，返回一个数组，成员是参数对象自身的（不含继承的）所有可遍历（enumerable）属性的键名。
+
