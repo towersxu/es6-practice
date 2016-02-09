@@ -1937,3 +1937,22 @@ obj.z // 40
 该方法与setPrototypeOf方法配套，用于读取一个对象的prototype对象。
 ES5引入了Object.keys方法，返回一个数组，成员是参数对象自身的（不含继承的）所有可遍历（enumerable）属性的键名。
 
+SIMD 的用法
+SIMD是“Single Instruction/Multiple Data”的缩写，意为“单指令，多数据”。它是JavaScript操作CPU对应指令的接口，你可以看做这是一种不同的运算执行模式。与它相对的是SISD（“Single Instruction/Single Data”），即“单指令，单数据”。
+SIMD的含义是使用一个指令，完成多个数据的运算；SISD的含义是使用一个指令，完成单个数据的运算，这是JavaScript的默认运算模式。显而易见，SIMD的执行效率要高于SISD，所以被广泛用于3D图形运算、物理模拟等运算量超大的项目之中。
+
+## == 运算逻辑
+
+如果x不是正常值（比如抛出一个错误），中断执行。
+如果y不是正常值，中断执行。
+如果Type(x)与Type(y)相同，执行严格相等运算x === y。
+如果x是null，y是undefined，返回true。
+如果x是undefined，y是null，返回true。
+如果Type(x)是数值，Type(y)是字符串，返回x == ToNumber(y)的结果。
+如果Type(x)是字符串，Type(y)是数值，返回ToNumber(x) == y的结果。
+如果Type(x)是布尔值，返回ToNumber(x) == y的结果。
+如果Type(y)是布尔值，返回x == ToNumber(y)的结果。
+如果Type(x)是字符串或数值或Symbol值，Type(y)是对象，返回x == ToPrimitive(y)的结果。
+如果Type(x)是对象，Type(y)是字符串或数值或Symbol值，返回ToPrimitive(x) == y的结果。
+返回false。
+
